@@ -23,33 +23,56 @@ dotenv.config();
 // Initialize express app
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
-
-// Middleware
-// app.use(cors());
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // CORS configuration
-const allowedOrigins = ['https://localhost:5173'];
+const developmentOrigins = [
+  'http://localhost:5173',
+  'https://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+];
+
+const productionOrigins = [
+  'http://finance.savio96alumni.com.ng',
+  'https://finance.savio96alumni.com.ng',
+  'http://api.savio96alumni.com.ng',
+  'https://api.savio96alumni.com.ng',
+];
+
+const allowedOrigins =
+  NODE_ENV === 'production' ? productionOrigins : developmentOrigins;
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      // For development debugging
+      console.log(`Request origin: ${origin}, Environment: ${NODE_ENV}`);
 
-      if (allowedOrigins.indexOf(origin) === -1) {
+      // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Check if the origin is allowed
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
         const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
         return callback(new Error(msg), false);
       }
-      return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 86400, // Cache preflight response for 24 hours
   })
 );
 
-// Handle preflight requests
+// Handle preflight requests - place after the regular CORS middleware
 app.options('*', cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -81,7 +104,7 @@ mongoose
     console.log('Connected to MongoDB');
     // Start the server
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Server running on port ${PORT} in ${NODE_ENV} mode`);
     });
   })
   .catch((error) => {
